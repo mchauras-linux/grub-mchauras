@@ -222,8 +222,12 @@ dev_iterate (const struct grub_ieee1275_devalias *alias)
 	grub_ieee1275_cell_t table;
       }
       args;
+      struct lun_buf {
+        grub_uint64_t *buf_addr;
+        grub_uint64_t lun_count;
+      } *tbl;
       char *buf, *bufptr;
-      unsigned i;
+      unsigned int i, j;
 
       if (grub_ieee1275_open (alias->path, &ihandle))
 	return;
@@ -248,17 +252,18 @@ dev_iterate (const struct grub_ieee1275_devalias *alias)
 	return;
       bufptr = grub_stpcpy (buf, alias->path);
 
+      tbl = (struct lun_len *) args.table;
       for (i = 0; i < args.nentries; i++)
-	{
-	  grub_uint64_t *ptr;
+        {
+          grub_uint64_t *ptr;
 
-	  ptr = *(grub_uint64_t **) (args.table + 4 + 8 * i);
-	  while (*ptr)
-	    {
-	      grub_snprintf (bufptr, 32, "/disk@%" PRIxGRUB_UINT64_T, *ptr++);
-	      dev_iterate_real (buf, buf);
-	    }
-	}
+          ptr = (grub_uint64_t *)(grub_addr_t) tbl[i].buf_addr;
+          for (j = 0; j < tbl[i].lun_count; j++)
+           {
+             grub_snprintf (bufptr, 32, "/disk@%" PRIxGRUB_UINT64_T, *ptr++);
+             dev_iterate_real (buf, buf);
+           }
+        }
       grub_ieee1275_close (ihandle);
       grub_free (buf);
       return;
